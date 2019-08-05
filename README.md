@@ -14,3 +14,13 @@ You can also double-click on the lyrics panel to display lyrics in fullscreen.
 If an error is encountered (track is instrumental or could not be found), the panel will be hidden
 and the icon will be greyed-out; simply hover over it with your mouse to see the reason why
 the lyrics could not be found.
+
+## Screenshots
+
+> Lyrics panel
+
+![Panel screenshot](screenshots/small.png)
+
+> Full-screen mode
+
+![Full-screen screenshot](screenshots/big.png)
