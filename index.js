@@ -216,7 +216,7 @@ function setup() {
 
       for (const lyric of lyrics) {
         const el = document.createElement('li'),
-              text = lyric.text || (lyric === lyrics[lyrics.length - 1] ? '(end)' : '(pause)')
+              text = lyric.text || (lyric === lyrics[lyrics.length - 1] ? '(end)' : '...')
         
         if (text === '')
           el.classList.add('other')
