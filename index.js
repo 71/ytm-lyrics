@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name Spotify Lyrics
-// @namespace Violentmonkey Scripts
-// @match https://open.spotify.com/*
+// @name YouTube Music Lyrics
+// @namespace Lyrics
+// @match https://music.youtube.com/*
 // @noframes
 // @grant GM_xmlhttpRequest
 // @grant GM_getValue
@@ -9,16 +9,16 @@
 // ==/UserScript==
 
 
+//////////////////////////////////////////////////////////////
+/////  STYLE  ////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////
+
 const style = document.createElement('style')
 
 style.innerHTML = `
-  .main-view-container {
-    position: relative;
-  }
-
   .lyrics-wrapper {
     display: flex;
-    position: absolute;
+    position: fixed;
     width: 100%;
     height: 100%;
     z-index: 100;
@@ -26,6 +26,7 @@ style.innerHTML = `
     justify-content: center;
     padding-bottom: 2em;
     pointer-events: none;
+    bottom: var(--ytmusic-player-bar-height);
   }
 
   .lyrics-wrapper.hidden {
@@ -62,6 +63,7 @@ style.innerHTML = `
 
   ul.lyrics-list li {
     opacity: .7;
+    list-style-type: none;
   }
 
   ul.lyrics-list li.other {
@@ -74,20 +76,14 @@ style.innerHTML = `
     font-weight: bold;
     margin: .4em 0;
   }
-
-  .lyrics-toggle-control.error button {
-    color: #5a5a5a;
-  }
-
-  .spoticon-toggle-lyrics::before {
-    content: "\\f134";
-    font-size: 16px;
-    transform: translateX(-1px);
-  }
 `
 
 document.body.appendChild(style)
 
+
+//////////////////////////////////////////////////////////////
+/////  FETCH AND CACHE LYRICS  ///////////////////////////////
+//////////////////////////////////////////////////////////////
 
 function fetchLyrics(track, artists) {
   return new Promise((resolve, reject) => {
@@ -112,11 +108,15 @@ function fetchLyrics(track, artists) {
       onloadend: res => {
         const { message: { body: { macro_calls } } } = JSON.parse(res.responseText)
 
-        if ('track.subtitles.get' in macro_calls && macro_calls['track.subtitles.get']['message']['body']['subtitle_list'] && macro_calls['track.subtitles.get']['message']['body']['subtitle_list'].length > 0) {
+        if ('track.subtitles.get' in macro_calls &&
+            macro_calls['track.subtitles.get']['message']['body'] &&
+            macro_calls['track.subtitles.get']['message']['body']['subtitle_list'] &&
+            macro_calls['track.subtitles.get']['message']['body']['subtitle_list'].length > 0) {
           const subs = macro_calls['track.subtitles.get']['message']['body']['subtitle_list'][0].subtitle.subtitle_body
 
           return resolve(JSON.parse(subs))
-        } else if ('matcher.track.get' in macro_calls && macro_calls['matcher.track.get']['message']) {
+        } else if ('matcher.track.get' in macro_calls &&
+                   macro_calls['matcher.track.get']['message']['body']) {
           const info = macro_calls['matcher.track.get']['message']['body']['track']
 
           if (info.instrumental)
@@ -129,31 +129,51 @@ function fetchLyrics(track, artists) {
   })
 }
 
+
+//////////////////////////////////////////////////////////////
+/////  HELPERS  //////////////////////////////////////////////
+//////////////////////////////////////////////////////////////
+
 function centerElementInContainer(element, container) {
+  if (element == null)
+    return
+
   const scrollTo = element.offsetTop - container.offsetHeight / 2 + element.offsetHeight / 2
 
   container.scrollTo(0, scrollTo)
 }
 
+function html(strings, ...args) {
+  const template = document.createElement('template')
+
+  template.innerHTML = String.raw(strings, ...args).trim()
+
+  return template.content.firstChild
+}
+
+
+//////////////////////////////////////////////////////////////
+/////  MAIN LOOP  ////////////////////////////////////////////
+//////////////////////////////////////////////////////////////
 
 function setup() {
-  // To pick an icon:
-  // - Create an element with style: "font-family: glue1-spoticon; color: white; font-style: normal; font-weight: 400; z-index: 900; font-size: 1.8em;"
-  // - Select it, and set its content using: "for (let i = 0xf100; i < 0xf2b0; i++) $0.innerHTML += '<span>' + String.fromCharCode(i) + '</span>'"
-  //
-  // Choose! 
   const STEP = 100
 
-  const spotifyContainerEl = document.querySelector('.main-view-container'),
-        spotifyControlsEl  = document.querySelector('.ExtraControls')
+  // Set up out own elements
+  const containerEl = document.body,
+        controlsEl  = document.querySelector('.right-controls-buttons.ytmusic-player-bar')
 
-  const controlEl = document.createElement('div'),
-        wrapperEl = document.createElement('div')
+  const controlEl = html`
+    <paper-icon-button class="toggle-lyrics style-scope ytmusic-player-bar" icon="yt-icons:subtitles" title="Toggle lyrics" aria-label="Toggle lyrics" role="button">`
 
+  const wrapperEl = html`
+    <div class="lyrics-wrapper hidden">
+      <div class="lyrics-container">
+        <ul class="lyrics-list">`
 
-  wrapperEl.className = 'lyrics-wrapper hidden'
-  wrapperEl.innerHTML = `<div class="lyrics-container"><ul class="lyrics-list"></ul></div>`
-  
+  controlsEl.insertBefore(controlEl, controlsEl.childNodes[2])
+  containerEl.insertBefore(wrapperEl, containerEl.firstElementChild)
+
   wrapperEl.addEventListener('dblclick', () => {
     if (document.fullscreenElement)
       document.exitFullscreen()
@@ -162,40 +182,33 @@ function setup() {
 
     document.getSelection().removeAllRanges()
   })
-  
+
   wrapperEl.firstElementChild.addEventListener('fullscreenchange', () => {
     centerElementInContainer(wrapperEl.querySelector('.active'), wrapperEl.firstElementChild)
   })
-  
+
   const lyricsEl = wrapperEl.querySelector('ul.lyrics-list')
 
-  controlEl.className = 'lyrics-toggle-control'
-  controlEl.innerHTML = `<button class="control-button spoticon-toggle-lyrics" title="Toggle lyrics"></button>`
-  
-  controlEl.firstChild.addEventListener('click', () => {
+  controlEl.addEventListener('click', () => {
     wrapperEl.classList.toggle('hidden')
 
     centerElementInContainer(wrapperEl.querySelector('.active'), wrapperEl.firstElementChild)
   })
 
-  spotifyControlsEl.insertBefore(controlEl, spotifyControlsEl.firstElementChild)
-  spotifyContainerEl.insertBefore(wrapperEl, spotifyContainerEl.firstElementChild)
-
   let lyrics = [],
       activeLyric = undefined
 
-
   function setError(message) {
-    controlEl.firstElementChild.title = message
-    controlEl.firstElementChild.disabled = true
+    controlEl.title = message
+    controlEl.disabled = true
 
     controlEl.classList.add('error')
     wrapperEl.classList.add('hidden')
   }
 
   function clearError() {
-    controlEl.firstElementChild.title = 'Toggle lyrics'
-    controlEl.firstElementChild.disabled = false
+    controlEl.title = 'Toggle lyrics'
+    controlEl.disabled = false
 
     controlEl.classList.remove('error')
   }
@@ -261,15 +274,16 @@ function setup() {
       currentTime = 0,
       currentMs = 0
 
-  const [currentTimeEl, endTimeEl] = document.querySelectorAll('.playback-bar__progress-time')
-
-  const trackNameEl = document.querySelector('.track-info__name'),
-        trackArtistsEl = document.querySelector('.track-info__artists')
+  const progressEl = document.querySelector('.time-info')
 
   setInterval(() => {
+    const trackNameEl = document.querySelector('.content-info-wrapper .title'),
+          trackArtistsEl = document.querySelector('.content-info-wrapper .subtitle a') ||
+                           document.querySelector('.content-info-wrapper .subtitle span')
+
     const song = trackNameEl.textContent,
           artists = trackArtistsEl.textContent,
-          timeMatch = /^(\d+):(\d+)$/.exec(currentTimeEl.textContent),
+          timeMatch = /^\s*(\d+):(\d+)/.exec(progressEl.textContent),
           time = +timeMatch[1] * 60 + +timeMatch[2]
 
     if (song !== currentSong || artists !== currentArtists) {
@@ -288,10 +302,9 @@ function setup() {
 
 
 let checkInterval = setInterval(() => {
-  if (document.getElementsByClassName('track-info__name').length === 0)
+  if (document.querySelector('.content-info-wrapper .subtitle span') === null)
     return
-  
+
   clearInterval(checkInterval)
   setup()
 }, 100)
- 
