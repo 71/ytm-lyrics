@@ -87,11 +87,13 @@ document.body.appendChild(style)
 
 function fetchLyrics(track, artists) {
   return new Promise((resolve, reject) => {
+    const artistsStr = artists.map(artist => `&q_artist=${encodeURIComponent(artist)}`).join('')
+
     const url = `https://apic-desktop.musixmatch.com/ws/1.1/macro.subtitles.get`
               + `?format=json&user_language=en&namespace=lyrics_synched`
               + `&f_subtitle_length_max_deviation=1&subtitle_format=mxm`
               + `&app_id=web-desktop-app-v1.0&usertoken=190511307254ae92ff84462c794732b84754b64a2f051121eff330`
-              + `&q_track=${encodeURIComponent(track)}&q_artist=${encodeURIComponent(artists)}`
+              + `&q_track=${encodeURIComponent(track)}${artistsStr}`
 
     GM_xmlhttpRequest({
       url,
@@ -278,15 +280,15 @@ function setup() {
 
   setInterval(() => {
     const trackNameEl = document.querySelector('.content-info-wrapper .title'),
-          trackArtistsEl = document.querySelector('.content-info-wrapper .subtitle a') ||
-                           document.querySelector('.content-info-wrapper .subtitle span')
+          trackArtistsEls = [...document.querySelectorAll('.content-info-wrapper .subtitle a')].filter(x => x.pathname.startsWith('/channel/')) ||
+                            [document.querySelector('.content-info-wrapper .subtitle span')]
 
     const song = trackNameEl.textContent,
-          artists = trackArtistsEl.textContent,
+          artists = trackArtistsEls.map(x => x.textContent),
           timeMatch = /^\s*(\d+):(\d+)/.exec(progressEl.textContent),
           time = +timeMatch[1] * 60 + +timeMatch[2]
 
-    if (song !== currentSong || artists !== currentArtists) {
+    if (song !== currentSong || artists.length !== currentArtists.length || artists.some((a, i) => currentArtists[i] !== a)) {
       onSongChanged(currentSong = song, currentArtists = artists, currentTime = time)
     } else {
       // Interpolate milliseconds, this makes things MUCH smoother
