@@ -216,6 +216,11 @@ function setup() {
   }
 
   async function onSongChanged(track, artists, time) {
+    let restoreFullscreen = document.fullscreenElement === wrapperEl.firstElementChild
+
+    if (restoreFullscreen)
+      document.exitFullscreen()
+
     clearError()
     lyricsEl.innerHTML = ''
     wrapperEl.firstElementChild.scrollTo(0, 0)
@@ -274,22 +279,37 @@ function setup() {
   let currentSong = '',
       currentArtists = '',
       currentTime = 0,
-      currentMs = 0
+      currentMs = 0,
+      loadingCount = 0
 
   const progressEl = document.querySelector('.time-info')
 
   setInterval(() => {
     const trackNameEl = document.querySelector('.content-info-wrapper .title'),
-          trackArtistsEls = [...document.querySelectorAll('.content-info-wrapper .subtitle a')].filter(x => x.pathname.startsWith('/channel/')) ||
-                            [document.querySelector('.content-info-wrapper .subtitle span')]
+          trackArtistsEls = [...document.querySelectorAll('.content-info-wrapper .subtitle a')].filter(x => x.pathname.startsWith('/channel/'))
+
+    if (trackArtistsEls.length === 0) {
+      const alt = document.querySelector('.content-info-wrapper .subtitle span')
+
+      if (alt !== null)
+        trackArtistsEls.push(alt)
+    }
 
     const song = trackNameEl.textContent,
-          artists = trackArtistsEls.map(x => x.textContent),
+          artists = trackArtistsEls.map(x => x.textContent).filter(x => x.length > 0),
           timeMatch = /^\s*(\d+):(\d+)/.exec(progressEl.textContent),
           time = +timeMatch[1] * 60 + +timeMatch[2]
 
     if (song !== currentSong || artists.length !== currentArtists.length || artists.some((a, i) => currentArtists[i] !== a)) {
+      if (song.length === 0 || artists.length === 0) {
+        if (loadingCount < 10) {
+          loadingCount++
+          return
+        }
+      }
+
       onSongChanged(currentSong = song, currentArtists = artists, currentTime = time)
+      loadingCount = 0
     } else {
       // Interpolate milliseconds, this makes things MUCH smoother
       if (currentTime !== time)
