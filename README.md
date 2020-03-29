@@ -1,4 +1,4 @@
-# spotify-lyrics-web
+# ytm-lyrics
 GreaseMonkey / ViolentMonkey script to display lyrics on the YouTube Music Web Player using Musixmatch.
 
 ## Installation
