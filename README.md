@@ -14,3 +14,8 @@ You can also double-click on the lyrics panel to display lyrics in fullscreen.
 If an error is encountered (track is instrumental or could not be found), the panel will be hidden
 and the icon will be greyed-out; simply hover over it with your mouse to see the reason why
 the lyrics could not be found.
+
+If the lyrics are no perfectly synced to the song:
+- Press `X` to delay the song by 100ms (the lyrics will appear **earlier**).
+- Press `Shift+X` to delay the lyrics by 100ms (the lyrics will appear **later**).
+- Press `Alt+X` to reset the delay to 0.
