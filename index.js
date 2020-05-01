@@ -34,7 +34,7 @@ style.innerHTML = `
   }
 
   .lyrics-container {
-    background: rgba(40, 40, 40, .85);
+    background: rgba(6, 6, 6, .85);
     height: 300px;
     width: 600px;
     overflow: scroll;
@@ -49,16 +49,17 @@ style.innerHTML = `
   }
 
   .lyrics-container:fullscreen {
-    font-size: 2em;
-    background: linear-gradient(to right, #42275a, #734b6d);
+    font-size: 2.8em;
+    background: linear-gradient(to right, #780505, #942823);
   }
 
   ul.lyrics-list {
     text-align: center;
-    font-size: 1.8em;
+    font-size: 2.1em;
     line-height: 1.5;
     padding: 1em;
     position: relative;
+    font-family: 'YT Sans', sans-serif;
   }
 
   ul.lyrics-list li {
@@ -75,6 +76,12 @@ style.innerHTML = `
     font-size: 1.4em;
     font-weight: bold;
     margin: .4em 0;
+  }
+
+  .lyrics-delay {
+    position: absolute;
+    margin: 1em;
+    pointer-events: none;
   }
 `
 
@@ -171,6 +178,7 @@ function setup() {
   const wrapperEl = html`
     <div class="lyrics-wrapper hidden">
       <div class="lyrics-container">
+        <p class="lyrics-delay"></p>
         <ul class="lyrics-list">`
 
   controlsEl.insertBefore(controlEl, controlsEl.childNodes[2])
@@ -189,7 +197,8 @@ function setup() {
     centerElementInContainer(wrapperEl.querySelector('.active'), wrapperEl.firstElementChild)
   })
 
-  const lyricsEl = wrapperEl.querySelector('ul.lyrics-list')
+  const lyricsEl = wrapperEl.querySelector('ul.lyrics-list'),
+        delayEl = wrapperEl.querySelector('p.lyrics-delay')
 
   controlEl.addEventListener('click', () => {
     wrapperEl.classList.toggle('hidden')
@@ -279,8 +288,9 @@ function setup() {
   let currentSong = '',
       currentArtists = '',
       currentTime = 0,
-      currentMs = 0,
-      loadingCount = 0
+      currentS = 0,
+      loadingCount = 0,
+      delayMs = 0
 
   const progressEl = document.querySelector('.time-info')
 
@@ -309,17 +319,40 @@ function setup() {
       }
 
       onSongChanged(currentSong = song, currentArtists = artists, currentTime = time)
-      loadingCount = 0
+      loadingCount = delayMs = 0
     } else {
       // Interpolate milliseconds, this makes things MUCH smoother
       if (currentTime !== time)
-        currentMs = 0
+        currentS = 0
       else
-        currentMs = Math.min(.95, currentMs + STEP / 1000)
+        currentS = Math.min(.95, currentS + STEP / 1000)
 
-      onTimeChanged((currentTime = time) + currentMs)
+      onTimeChanged((currentTime = time) + currentS + delayMs / 1000)
     }
   }, STEP)
+
+  let delayTimeout
+
+  document.addEventListener('keydown', e => {
+    console.log(e)
+    if (e.target.tagName === 'INPUT' || e.keyCode !== 88 /* X */)
+      return
+
+    if (delayTimeout) {
+      clearTimeout(delayTimeout)
+      delayTimeout = undefined
+    }
+
+    if (e.altKey)
+      delayMs = 0
+    else if (e.shiftKey)
+      delayMs -= 100
+    else
+      delayMs += 100
+
+    delayEl.innerText = `Delay: ${delayMs / 1000}s`
+    delayTimeout = setTimeout(() => delayEl.innerText = '', 1000)
+  })
 }
 
 
