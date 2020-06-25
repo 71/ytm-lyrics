@@ -49,7 +49,7 @@ style.innerHTML = `
   }
 
   .lyrics-container:fullscreen {
-    font-size: 2.8em;
+    font-size: min(2.8em, 4vmin);
     background: linear-gradient(to right, #780505, #942823);
   }
 
@@ -225,11 +225,6 @@ function setup() {
   }
 
   async function onSongChanged(track, artists, time) {
-    let restoreFullscreen = document.fullscreenElement === wrapperEl.firstElementChild
-
-    if (restoreFullscreen)
-      document.exitFullscreen()
-
     clearError()
     lyricsEl.innerHTML = ''
     wrapperEl.firstElementChild.scrollTo(0, 0)
