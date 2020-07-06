@@ -2,11 +2,24 @@
 // @name YouTube Music Lyrics
 // @namespace Lyrics
 // @match https://music.youtube.com/*
+// @connect https://apic-desktop.musixmatch.com/*
 // @noframes
 // @grant GM_xmlhttpRequest
 // @grant GM_getValue
 // @grant GM_setValue
 // ==/UserScript==
+
+
+//////////////////////////////////////////////////////////////
+/////  COMPAT  ///////////////////////////////////////////////
+//////////////////////////////////////////////////////////////
+
+if (GM_xmlhttpRequest === undefined)
+  GM_xmlhttpRequest = GM.xmlHttpRequest
+if (GM_getValue === undefined)
+  GM_getValue = GM.getValue
+if (GM_setValue === undefined)
+  GM_setValue = GM.setValue
 
 
 //////////////////////////////////////////////////////////////
@@ -28,11 +41,9 @@ style.innerHTML = `
     pointer-events: none;
     bottom: var(--ytmusic-player-bar-height);
   }
-
   .lyrics-wrapper.hidden {
     display: none;
   }
-
   .lyrics-container {
     background: rgba(6, 6, 6, .85);
     height: 300px;
@@ -43,16 +54,13 @@ style.innerHTML = `
     border-radius: 5px;
     pointer-events: auto;
   }
-
   .lyrics-container::-webkit-scrollbar {
     display: none;
   }
-
   .lyrics-container:fullscreen {
     font-size: min(2.8em, 4vmin);
     background: linear-gradient(to right, #780505, #942823);
   }
-
   ul.lyrics-list {
     text-align: center;
     font-size: 2.1em;
@@ -61,23 +69,19 @@ style.innerHTML = `
     position: relative;
     font-family: 'YT Sans', sans-serif;
   }
-
   ul.lyrics-list li {
     opacity: .7;
     list-style-type: none;
   }
-
   ul.lyrics-list li.other {
     opacity: .5;
   }
-
   ul.lyrics-list li.active {
     opacity: 1;
     font-size: 1.4em;
     font-weight: bold;
     margin: .4em 0;
   }
-
   .lyrics-delay {
     position: absolute;
     margin: 1em;
@@ -207,11 +211,15 @@ function setup() {
   })
 
   let lyrics = [],
-      activeLyric = undefined
+      activeLyric = undefined,
+      autoScroll = true
 
   function setError(message) {
     controlEl.title = message
     controlEl.disabled = true
+
+    if (document.fullscreenElement === wrapperEl.firstElementChild)
+      document.exitFullscreen()
 
     controlEl.classList.add('error')
     wrapperEl.classList.add('hidden')
@@ -273,7 +281,10 @@ function setup() {
 
     if ((activeLyric = newActiveLyric) !== undefined) {
       activeLyric.element.classList.add('active')
-      centerElementInContainer(activeLyric.element, wrapperEl.firstElementChild)
+
+      if (autoScroll) {
+        centerElementInContainer(activeLyric.element, wrapperEl.firstElementChild)
+      }
     } else {
       wrapperEl.firstElementChild.scrollTo(0, 0)
     }
@@ -291,7 +302,9 @@ function setup() {
 
   setInterval(() => {
     const trackNameEl = document.querySelector('.content-info-wrapper .title'),
-          trackArtistsEls = [...document.querySelectorAll('.content-info-wrapper .subtitle a')].filter(x => x.pathname.startsWith('/channel/'))
+          trackArtistsEls = [...document.querySelectorAll('.content-info-wrapper .subtitle a')]
+                              .filter(x => x.pathname.startsWith('/channel/')
+                                        || x.pathname.startsWith('/browse/FEmusic_library_privately_owned_artist_detail'))
 
     if (trackArtistsEls.length === 0) {
       const alt = document.querySelector('.content-info-wrapper .subtitle span')
@@ -329,24 +342,31 @@ function setup() {
   let delayTimeout
 
   document.addEventListener('keydown', e => {
-    console.log(e)
-    if (e.target.tagName === 'INPUT' || e.keyCode !== 88 /* X */)
+    if (e.target.tagName === 'INPUT')
       return
 
-    if (delayTimeout) {
-      clearTimeout(delayTimeout)
-      delayTimeout = undefined
+    if (e.keyCode === 88 /* X */) {
+      if (delayTimeout) {
+        clearTimeout(delayTimeout)
+        delayTimeout = undefined
+      }
+
+      if (e.altKey)
+        delayMs = 0
+      else if (e.shiftKey)
+        delayMs -= 100
+      else
+        delayMs += 100
+
+      delayEl.innerText = `Delay: ${delayMs / 1000}s`
+      delayTimeout = setTimeout(() => delayEl.innerText = '', 1000)
     }
+    else if (e.keyCode === 83) {
+      autoScroll = !autoScroll
 
-    if (e.altKey)
-      delayMs = 0
-    else if (e.shiftKey)
-      delayMs -= 100
-    else
-      delayMs += 100
-
-    delayEl.innerText = `Delay: ${delayMs / 1000}s`
-    delayTimeout = setTimeout(() => delayEl.innerText = '', 1000)
+      delayEl.innerText = `Autoscroll ${autoScroll ? 'enabled' : 'disabled'}`
+      delayTimeout = setTimeout(() => delayEl.innerText = '', 1000)
+    }
   })
 }
 
