@@ -239,7 +239,7 @@ function setup() {
 
     try {
       const cacheKey = `${track} -- ${artists}`,
-            cached = GM_getValue(cacheKey)
+            cached = await GM_getValue(cacheKey)
 
       if (cached === undefined)
         GM_setValue(cacheKey, JSON.stringify(lyrics = await fetchLyrics(track, artists)))
