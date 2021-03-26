@@ -41,6 +41,10 @@ style.innerHTML = `
     pointer-events: none;
     bottom: var(--ytmusic-player-bar-height);
   }
+  .lyrics-wrapper.fullscreen {
+    bottom: 0;
+    padding-bottom: 0;
+  }
   .lyrics-wrapper.hidden {
     display: none;
   }
@@ -57,9 +61,11 @@ style.innerHTML = `
   .lyrics-container::-webkit-scrollbar {
     display: none;
   }
-  .lyrics-container:fullscreen {
+  .lyrics-wrapper.fullscreen .lyrics-container {
     font-size: min(2.8em, 4vmin);
     background: linear-gradient(to right, #780505, #942823);
+    width: 100%;
+    height: 100%;
   }
   ul.lyrics-list {
     text-align: center;
@@ -98,12 +104,12 @@ document.body.appendChild(style)
 
 function fetchLyrics(track, artists) {
   return new Promise((resolve, reject) => {
-    const artistsStr = artists.map(artist => `&q_artist=${encodeURIComponent(artist)}`).join('')
+    const artistsStr = artists.map(artist => `&q_artist=${encodeURIComponent(artist.replace(/\//g, ''))}`).join('')
 
     const url = `https://apic-desktop.musixmatch.com/ws/1.1/macro.subtitles.get`
               + `?format=json&user_language=en&namespace=lyrics_synched`
               + `&f_subtitle_length_max_deviation=1&subtitle_format=mxm`
-              + `&app_id=web-desktop-app-v1.0&usertoken=190511307254ae92ff84462c794732b84754b64a2f051121eff330`
+              + `&app_id=web-desktop-app-v1.0&usertoken=201219dbdb0f6aaba1c774bd931d0e79a28024e28db027ae72955c`
               + `&q_track=${encodeURIComponent(track)}${artistsStr}`
 
     GM_xmlhttpRequest({
@@ -115,8 +121,8 @@ function fetchLyrics(track, artists) {
         Origin: 'musixmatch.com',
       },
 
-      onabort: () => reject(),
-      onerror: () => reject(),
+      onabort: reject,
+      onerror: reject,
 
       onloadend: res => {
         const { message: { body: { macro_calls } } } = JSON.parse(res.responseText)
@@ -189,10 +195,8 @@ function setup() {
   containerEl.insertBefore(wrapperEl, containerEl.firstElementChild)
 
   wrapperEl.addEventListener('dblclick', () => {
-    if (document.fullscreenElement)
-      document.exitFullscreen()
-    else
-      wrapperEl.firstElementChild.requestFullscreen()
+    wrapperEl.classList.toggle('fullscreen')
+    centerElementInContainer(wrapperEl.querySelector('.active'), wrapperEl.firstElementChild)
 
     document.getSelection().removeAllRanges()
   })
@@ -218,8 +222,7 @@ function setup() {
     controlEl.title = message
     controlEl.disabled = true
 
-    if (document.fullscreenElement === wrapperEl.firstElementChild)
-      document.exitFullscreen()
+    wrapperEl.classList.remove('fullscreen')
 
     controlEl.classList.add('error')
     wrapperEl.classList.add('hidden')
@@ -239,7 +242,7 @@ function setup() {
 
     try {
       const cacheKey = `${track} -- ${artists}`,
-            cached = await GM_getValue(cacheKey)
+            cached = GM_getValue(cacheKey)
 
       if (cached === undefined)
         GM_setValue(cacheKey, JSON.stringify(lyrics = await fetchLyrics(track, artists)))
@@ -303,7 +306,7 @@ function setup() {
   setInterval(() => {
     const trackNameEl = document.querySelector('.content-info-wrapper .title'),
           trackArtistsEls = [...document.querySelectorAll('.content-info-wrapper .subtitle a')]
-                              .filter(x => x.pathname.startsWith('/channel/')
+                              .filter(x => x.pathname.startsWith('/channel/UC')
                                         || x.pathname.startsWith('/browse/FEmusic_library_privately_owned_artist_detail'))
 
     if (trackArtistsEls.length === 0) {
@@ -361,11 +364,14 @@ function setup() {
       delayEl.innerText = `Delay: ${delayMs / 1000}s`
       delayTimeout = setTimeout(() => delayEl.innerText = '', 1000)
     }
-    else if (e.keyCode === 83) {
+    else if (e.keyCode === 83 /* S */) {
       autoScroll = !autoScroll
 
       delayEl.innerText = `Autoscroll ${autoScroll ? 'enabled' : 'disabled'}`
       delayTimeout = setTimeout(() => delayEl.innerText = '', 1000)
+    }
+    else if (e.keyCode === 27 /* Escape */) {
+      wrapperEl.classList.remove('fullscreen')
     }
   })
 }
