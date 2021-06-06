@@ -183,7 +183,7 @@ function setup() {
         controlsEl  = document.querySelector('.right-controls-buttons.ytmusic-player-bar')
 
   const controlEl = html`
-    <paper-icon-button class="toggle-lyrics style-scope ytmusic-player-bar" icon="yt-icons:subtitles" title="Toggle lyrics" aria-label="Toggle lyrics" role="button">`
+    <tp-yt-paper-icon-button class="toggle-lyrics style-scope ytmusic-player-bar" icon="yt-icons:subtitles" title="Toggle lyrics" aria-label="Toggle lyrics" role="button">`
 
   const wrapperEl = html`
     <div class="lyrics-wrapper hidden">
