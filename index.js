@@ -364,7 +364,7 @@ function setup() {
       delayEl.innerText = `Delay: ${delayMs / 1000}s`
       delayTimeout = setTimeout(() => delayEl.innerText = '', 1000)
     }
-    else if (e.keyCode === 83 /* S */) {
+    else if (e.keyCode === 90 /* Z */) {
       autoScroll = !autoScroll
 
       delayEl.innerText = `Autoscroll ${autoScroll ? 'enabled' : 'disabled'}`
