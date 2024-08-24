@@ -28,7 +28,7 @@ if (GM_setValue === undefined)
 
 const style = document.createElement('style')
 
-style.innerHTML = `
+style.textContent = `
   .lyrics-wrapper {
     display: flex;
     position: fixed;
@@ -49,7 +49,7 @@ style.innerHTML = `
     display: none;
   }
   .lyrics-container {
-    background: rgba(6, 6, 6, .85);
+    background: var(--ytmusic-player-bar-background);
     height: 300px;
     width: 600px;
     overflow: scroll;
@@ -63,7 +63,6 @@ style.innerHTML = `
   }
   .lyrics-wrapper.fullscreen .lyrics-container {
     font-size: min(2.8em, 4vmin);
-    background: linear-gradient(to right, #780505, #942823);
     width: 100%;
     height: 100%;
   }
@@ -138,7 +137,7 @@ function fetchLyrics(track, artists) {
                    macro_calls['matcher.track.get']['message']['body']) {
           const info = macro_calls['matcher.track.get']['message']['body']['track']
 
-          if (info.instrumental)
+          if (info?.instrumental)
             return reject('Instrumental track.')
         }
 
@@ -162,12 +161,18 @@ function centerElementInContainer(element, container) {
   container.scrollTo(0, scrollTo)
 }
 
-function html(strings, ...args) {
-  const template = document.createElement('template')
+function h(tag, attrs, ...children) {
+  const element = document.createElement(tag)
 
-  template.innerHTML = String.raw(strings, ...args).trim()
+  for (const attr in attrs) {
+    element.setAttribute(attr, attrs[attr])
+  }
 
-  return template.content.firstChild
+  for (const child of children) {
+    element.appendChild(child)
+  }
+
+  return element
 }
 
 
@@ -182,14 +187,20 @@ function setup() {
   const containerEl = document.body,
         controlsEl  = document.querySelector('.right-controls-buttons.ytmusic-player-bar')
 
-  const controlEl = html`
-    <tp-yt-paper-icon-button class="toggle-lyrics style-scope ytmusic-player-bar" icon="yt-icons:subtitles" title="Toggle lyrics" aria-label="Toggle lyrics" role="button">`
+  const controlEl = h("tp-yt-paper-icon-button", {
+    class: "toggle-lyrics style-scope ytmusic-player-bar",
+    title: "Toggle lyrics",
+    icon: "yt-icons:subtitles",
+    role: "button",
+    "aria-label": "Toggle lyrics",
+  })
 
-  const wrapperEl = html`
-    <div class="lyrics-wrapper hidden">
-      <div class="lyrics-container">
-        <p class="lyrics-delay"></p>
-        <ul class="lyrics-list">`
+  const wrapperEl = h("div", { class: "lyrics-wrapper hidden" },
+    h("div", { class: "lyrics-container"},
+      h("p", { class: "lyrics-delay"}),
+      h("ul", { class: "lyrics-list" })
+    )
+  )
 
   controlsEl.insertBefore(controlEl, controlsEl.childNodes[2])
   containerEl.insertBefore(wrapperEl, containerEl.firstElementChild)
@@ -237,7 +248,7 @@ function setup() {
 
   async function onSongChanged(track, artists, time) {
     clearError()
-    lyricsEl.innerHTML = ''
+    lyricsEl.replaceChildren()
     wrapperEl.firstElementChild.scrollTo(0, 0)
 
     try {
@@ -252,7 +263,7 @@ function setup() {
       for (const lyric of lyrics) {
         const el = document.createElement('li'),
               text = lyric.text || (lyric === lyrics[lyrics.length - 1] ? '(end)' : '...')
-        
+
         if (text === '')
           el.classList.add('other')
 
